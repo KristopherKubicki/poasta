@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""Utilities for extracting regions from POASTA graphs.
+
+This module contains helper functions and a CLI to slice a partial
+order alignment graph produced by POASTA.  The resulting subgraph is
+emitted in DOT format for further visualization.
+"""
+
 import argparse
 import sys
 from bisect import bisect_left
@@ -24,6 +31,16 @@ def parse_seq_meta(seq_bytes: bytes) -> tuple[str, str]:
 
 
 def parse_poasta_graphviz(file: BinaryIO):
+    """Parse a POASTA DOT file and return the graph and metadata.
+
+    Args:
+        file: File handle opened in binary mode pointing to the DOT file.
+
+    Returns:
+        Tuple of ``pygraphviz.AGraph`` for the graph and a mapping from
+        sequence names to ``(index, start_node)`` tuples.
+    """
+
     seq_names_line = file.readline()
     seq_names = seq_names_line.replace(b"# seq:\t", b"").split(b"\t")
 
@@ -38,6 +55,16 @@ def parse_poasta_graphviz(file: BinaryIO):
 
 
 def contains(list_to_search: list, value) -> bool:
+    """Return ``True`` if ``value`` exists in a pre-sorted list.
+
+    Args:
+        list_to_search: A list of sorted values.
+        value: The value to locate.
+
+    Returns:
+        ``True`` if ``value`` is present, otherwise ``False``.
+    """
+
     i = bisect_left(list_to_search, value)
 
     if i != len(list_to_search) and list_to_search[i] == value:
