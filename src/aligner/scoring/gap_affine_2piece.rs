@@ -3,7 +3,8 @@ use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
+use std::collections::VecDeque;
 use crate::aligner::{AlignedPair, Alignment};
 
 use crate::graphs::{AlignableRefGraph, NodeIndexType};
@@ -141,6 +142,44 @@ impl Affine2PieceAlignmentGraph {
     }
 }
 
+fn within_graph_distance<G>(ref_graph: &G, start: G::NodeIndex, max_dist: usize) -> bool
+where
+    G: AlignableRefGraph,
+{
+    if max_dist == 0 {
+        return start == ref_graph.end_node();
+    }
+
+    if start == ref_graph.end_node() {
+        return true;
+    }
+
+    let mut visited = FxHashSet::default();
+    let mut queue = VecDeque::new();
+
+    visited.insert(start);
+    queue.push_back((start, 0usize));
+
+    while let Some((node, dist)) = queue.pop_front() {
+        let next_dist = dist + 1;
+        if next_dist > max_dist {
+            continue;
+        }
+
+        for succ in ref_graph.successors(node) {
+            if visited.insert(succ) {
+                if succ == ref_graph.end_node() {
+                    return true;
+                }
+
+                queue.push_back((succ, next_dist));
+            }
+        }
+    }
+
+    false
+}
+
 impl AlignmentGraph for Affine2PieceAlignmentGraph {
     type CostModel = GapAffine2Piece;
 
@@ -233,14 +272,12 @@ impl AlignmentGraph for Affine2PieceAlignmentGraph {
                 
                 let can_end_here_graph = match graph_free_end {
                     Bound::Unbounded => {
-                        // Free graph ending: can end at any node
-                        // This allows skipping reference suffix without penalty
+                        // Free graph ending: can end at any node, A* will pick best
                         true
                     },
-                    Bound::Included(_) | Bound::Excluded(_) => {
-                        // For bounded free ends, still require reaching graph end for now
-                        // TODO: Implement proper graph distance calculation
-                        node.node() == ref_graph.end_node()
+                    Bound::Included(max_free) => within_graph_distance(ref_graph, node.node(), max_free),
+                    Bound::Excluded(max_free) => {
+                        max_free > 0 && within_graph_distance(ref_graph, node.node(), max_free - 1)
                     }
                 };
                 
