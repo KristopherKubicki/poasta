@@ -117,3 +117,23 @@ impl DebugOutputWorker {
         self.thread.join().unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{messages::DebugOutputMessage, DebugOutputWriter};
+    use tempfile::tempdir;
+
+    #[test]
+    fn writes_intermediate_graph_dot() {
+        let dir = tempdir().unwrap();
+        let writer = DebugOutputWriter::init(dir.path());
+        writer.log(DebugOutputMessage::IntermediateGraph {
+            graph_dot: "digraph { A -> B }".to_string(),
+        });
+        writer.log(DebugOutputMessage::Terminate);
+        writer.join().unwrap();
+
+        let dot_path = dir.path().join("graph_for_none.dot");
+        assert!(dot_path.exists(), "dot file {:?} missing", dot_path);
+    }
+}

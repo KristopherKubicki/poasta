@@ -26,3 +26,6 @@ smallvec = { version ="1.11.0", features =  ["const_generics", "union", "serde"]
 
 [features]
 ascii_radix = []
+
+[dev-dependencies]
+tempfile = "3"
