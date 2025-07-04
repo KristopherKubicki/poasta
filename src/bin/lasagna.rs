@@ -10,7 +10,6 @@ use noodles::{fasta, fastq};
 use flate2::read::MultiGzDecoder;
 use poasta::bubbles::index::BubbleIndex;
 use poasta::io::gfa::FieldValue;
-use rustc_hash::FxHashMap;
 
 use poasta::aligner::config::{AffineMinGapCost, AlignmentConfig};
 use poasta::aligner::scoring::{AlignmentType, GapAffine, Score};
@@ -111,9 +110,9 @@ struct SequenceRecord(String, Vec<u8>);
 
 
 fn align_sequence<Ix, C>(
-    graph: &POAGraph<Ix>, 
+    graph: &POAGraph<Ix>,
     graph_segments: &GraphSegments<Ix>,
-    node_to_segment: &FxHashMap<POANodeIndex<Ix>, (usize, usize)>,
+    node_to_segment: &[Option<(usize, usize)>],
     aligner: &mut PoastaAligner<C>,
     bubble_index: Arc<BubbleIndex<POANodeIndex<Ix>>>,
     seq_name: &str, 
@@ -189,25 +188,26 @@ fn align_subcommand(args: &AlignArgs) -> Result<()> {
     // Construct bubble index
     let bubble_index = Arc::new(BubbleIndex::new(&graph));
     
-    // TODO: this is maybe a bit memory inefficient, storing segment id for every node
-    let mut node_to_segment = FxHashMap::default();
+    // Map each node to its segment index and offset within the segment
+    let max_index = graph.all_nodes().map(|n| n.index()).max().unwrap_or(0) + 1;
+    let mut node_to_segment = vec![None; max_index];
     for (segment_ix, _) in graph_segments.names.iter().enumerate() {
         let start_node = graph_segments.start_nodes[segment_ix];
         let end_node = graph_segments.end_nodes[segment_ix];
-        
-        node_to_segment.insert(start_node, (segment_ix, 0));
-        
+
+        node_to_segment[start_node.index()] = Some((segment_ix, 0));
+
         if start_node == end_node {
             continue;
         }
-        
+
         let mut curr_node = start_node;
         let mut segment_pos = 1;
         while let Some(succ) = graph.successors(curr_node).next() {
-            node_to_segment.insert(succ, (segment_ix, segment_pos));
+            node_to_segment[succ.index()] = Some((segment_ix, segment_pos));
             curr_node = succ;
             segment_pos += 1;
-            
+
             if curr_node == end_node {
                 break;
             }
