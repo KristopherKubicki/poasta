@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+"""Extract and visualize a sequence region from a POASTA GraphViz file.
+
+This script reads a DOT file created by ``poasta view -O dot`` and prints a new
+subgraph containing only the nodes for a specific sequence range.  The output is
+another DOT graph that can be further processed by GraphViz or other tools.
+
+Run ``python poasta_graphviz_region.py GRAPH.dot seq:start-stop`` to get the
+subgraph for ``seq``.  Optional ``-H seq:color`` arguments highlight additional
+sequences in the visualization.
+"""
+
 import argparse
 import sys
 from bisect import bisect_left

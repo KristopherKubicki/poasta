@@ -5,8 +5,7 @@
 
 [![CI](https://github.com/broadinstitute/poasta/actions/workflows/ci.yml/badge.svg)](https://github.com/broadinstitute/poasta/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/broadinstitute/poasta/branch/main/graph/badge.svg)](https://codecov.io/gh/broadinstitute/poasta)
 
-
-POASTA is a fast and optimal partial order aligner that supports gap-affine alignment penalties. Inspired by 
+POASTA is a fast and optimal partial order aligner that supports gap-affine alignment penalties. Inspired by
 a recent [algorithm for pairwise alignment](https://github.com/smarco/WFA2-lib), it can exploit exact matches
 between the query and the graph, greatly speeding up the alignment process.
 
@@ -22,6 +21,7 @@ Download the archive that matches your platform and unpack it:
 tar -xzf poasta-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz
 sudo mv poasta /usr/local/bin/
 ```
+
 Replace `X.Y.Z` with the release number you wish to install. The binary can
 then be used directly from the command line.
 
@@ -33,6 +33,7 @@ POASTA is packaged for bioconda. You can install it using `conda` or
 ```bash
 conda install -c conda-forge -c bioconda poasta
 ```
+
 This will fetch a pre-built binary suitable for your environment and add it
 to your active conda environment's path.
 
@@ -40,7 +41,7 @@ to your active conda environment's path.
 
 #### Rust compiler
 
-POASTA is written in Rust, and to build and install it, you'll need a recent version of the Rust compiler. The 
+POASTA is written in Rust, and to build and install it, you'll need a recent version of the Rust compiler. The
 minimum supported Rust version is 1.70.
 
 1. Download and install `rustup`: https://rustup.rs/
@@ -48,33 +49,32 @@ minimum supported Rust version is 1.70.
 
 #### Building POASTA
 
-1. Clone the repository. 
-    
+1. Clone the repository.
+
    ```bash
    git clone https://github.com/broadinstitute/poasta
    ```
- 
-2. Move into the directory. 
+
+2. Move into the directory.
 
    ```bash
    cd poasta
    ```
- 
-3. Build using `cargo`. We enable a flag to ensure the compiler uses all features of your machine's CPU. 
+
+3. Build using `cargo`. We enable a flag to ensure the compiler uses all features of your machine's CPU.
    To maximize portability of the binary, however, remove the `RUSTFLAGS="..."` part.
-    
+
    ```bash
    RUSTFLAGS="-C target-cpu=native" cargo build --release
    ```
- 
-4. The built `poasta` executable will be available in the directory `target/release/`
 
+4. The built `poasta` executable will be available in the directory `target/release/`
 
 ## Usage
 
 ### Creating an alignment from scratch
 
-To create a multiple sequence alignment from scratch, simply give it a FASTA. The FASTA file can be compressed 
+To create a multiple sequence alignment from scratch, simply give it a FASTA. The FASTA file can be compressed
 with gzip (filename should have a `.gz` extension).
 
 ```bash
@@ -86,7 +86,7 @@ additional sequences to it.
 
 ### Re-using an earlier alignment
 
-To align additional sequences to an earlier created partial order graph, specify the existing graph using the 
+To align additional sequences to an earlier created partial order graph, specify the existing graph using the
 `-g` option.
 
 ```bash
@@ -98,7 +98,7 @@ this graph, and outputs the updated graph to `graph_updated.poasta`.
 
 ### Importing an existing multiple sequence alignment in FASTA format
 
-POASTA can import an existing multiple sequence alignment stored in columnar FASTA format (e.g., those 
+POASTA can import an existing multiple sequence alignment stored in columnar FASTA format (e.g., those
 created by other tools like `mafft` or `spoa`), create the equivalent partial order graph from the existing alignment,
 and then align new sequences to it. To achieve this, specify the FASTA MSA with extension .fa, .fna, or .fasta with
 the `-g` option (file is also allowed to be compressed with gzip if it has a `.gz` suffix).
@@ -117,9 +117,9 @@ you can specify the output format with the `-O` option:
 
 Other supported formats:
 
-* DOT (GraphViz): Specify with `-O dot`
-* FASTA MSA: Specify with `-O fasta`
-* Graph GFA: Specify with `-O gfa`
+- DOT (GraphViz): Specify with `-O dot`
+- FASTA MSA: Specify with `-O fasta`
+- Graph GFA: Specify with `-O gfa`
 
 For example, to visualize the graph directly with GraphViz:
 
@@ -136,9 +136,9 @@ By default, POASTA stores the computed graph/MSA in its own binary file format.
 To convert a previously computed MSA to other file formats, you can use `poasta view`.
 The supported output formats are the same as described above, i.e.:
 
-* DOT (GraphViz): Specify with `-O dot`
-* FASTA MSA: Specify with `-O fasta`
-* Graph GFA: Specify with `-O gfa`
+- DOT (GraphViz): Specify with `-O dot`
+- FASTA MSA: Specify with `-O fasta`
+- Graph GFA: Specify with `-O gfa`
 
 Example:
 
@@ -157,6 +157,7 @@ POASTA supports both standard affine gap penalties and two-piece affine gap pena
 ### Standard affine gap penalties
 
 By default, POASTA uses standard affine gap penalties with the following defaults:
+
 - Gap opening penalty: 6
 - Gap extension penalty: 2
 - Mismatch penalty: 4
@@ -183,8 +184,9 @@ The first values (8,2) apply to short gaps, while the second values (24,1) apply
 ### Alignment modes
 
 POASTA supports different alignment modes:
+
 - `global`: End-to-end alignment (default)
-- `semi-global`: Query aligned globally, but graph gaps are free at ends  
+- `semi-global`: Query aligned globally, but graph gaps are free at ends
 - `ends-free`: Free gaps at sequence beginnings/ends for both query and graph
 
 ```bash
@@ -221,7 +223,26 @@ can convert them between several formats, `lasagna` does not modify the graph.
 Instead it maps sequences onto a given GFA graph and outputs the alignments in
 GAF without producing a POASTA graph file.
 
+## Python Tools
+
+Several helper scripts are provided in `contrib/poasta_tools` for working with
+POASTA output using Python.
+
+`poasta_graphviz_region.py` extracts a subgraph from a DOT file produced by
+`poasta view -O dot`. Run it with:
+
+```bash
+python contrib/poasta_tools/poasta_graphviz_region.py graph.dot seq:start-stop
+```
+
+`poasta_plot.py` renders dynamic programming matrices and graph layouts from
+the debugging TSV files produced by POASTA. Invoke it as follows:
+
+```bash
+python contrib/poasta_tools/poasta_plot.py graph.dot iter_*.tsv -o plots
+```
+
 ## Related repositories
 
-* [poa-bench](https://github.com/broadinstitute/poa-bench) - Benchmark POASTA against other POA tools
-* [spoa-rs](https://github.com/broadinstitute/spoa-rs) - Rust bindings to SPOA
+- [poa-bench](https://github.com/broadinstitute/poa-bench) - Benchmark POASTA against other POA tools
+- [spoa-rs](https://github.com/broadinstitute/spoa-rs) - Rust bindings to SPOA
