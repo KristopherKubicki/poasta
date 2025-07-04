@@ -102,3 +102,37 @@ impl OffsetType for u64 {
         *self + Self::one()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::OffsetType;
+
+    #[test]
+    fn test_offset_u8() {
+        let o = <u8 as OffsetType>::new(5);
+        assert_eq!(o.as_usize(), 5);
+        assert_eq!(o.as_isize(), 5);
+        assert_eq!(o.increase_one(), <u8 as OffsetType>::new(6));
+    }
+
+    #[test]
+    fn test_offset_u16() {
+        let o = <u16 as OffsetType>::new(10);
+        assert_eq!(o.as_usize(), 10);
+        assert_eq!(o.increase_one(), <u16 as OffsetType>::new(11));
+    }
+
+    #[test]
+    fn test_offset_u32() {
+        let o = <u32 as OffsetType>::new(42);
+        assert_eq!(o.as_usize(), 42);
+        assert_eq!(o.increase_one(), <u32 as OffsetType>::new(43));
+    }
+
+    #[test]
+    fn test_offset_u64() {
+        let o = <u64 as OffsetType>::new(7);
+        assert_eq!(o.as_usize(), 7);
+        assert_eq!(o.increase_one(), <u64 as OffsetType>::new(8));
+    }
+}

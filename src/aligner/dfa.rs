@@ -258,3 +258,125 @@ where
     SuccessorsExhausted,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::aligner::Alignment;
+    use crate::errors::PoastaError;
+    use nonmax::NonMaxU32;
+    use std::fmt::Write;
+    use petgraph::algo::toposort;
+    use petgraph::graph::{DiGraph, NodeIndex, NodeIndices, Neighbors};
+    use petgraph::{Incoming, Outgoing};
+
+    /// Minimal graph storing character per node for DFA tests.
+    struct CharGraph {
+        graph: DiGraph<char, ()>,
+        end: NodeIndex,
+    }
+
+    impl CharGraph {
+        fn linear(chars: &[char]) -> Self {
+            let mut g: DiGraph<char, ()> = DiGraph::new();
+            let nodes: Vec<_> = chars.iter().map(|&c| g.add_node(c)).collect();
+            for i in 0..nodes.len() - 1 {
+                g.add_edge(nodes[i], nodes[i + 1], ());
+            }
+            let end = g.add_node('-');
+            g.add_edge(*nodes.last().unwrap(), end, ());
+            Self { graph: g, end }
+        }
+    }
+
+    impl AlignableRefGraph for CharGraph {
+        type NodeIndex = NodeIndex;
+        type NodeIterator<'a> = NodeIndices where Self: 'a;
+        type PredecessorIterator<'a> = Neighbors<'a, (), u32> where Self: 'a;
+        type SuccessorIterator<'a> = Neighbors<'a, (), u32> where Self: 'a;
+
+        fn all_nodes(&self) -> Self::NodeIterator<'_> { self.graph.node_indices() }
+        fn node_count(&self) -> usize { self.graph.node_count() }
+        fn node_count_with_start_and_end(&self) -> usize { self.graph.node_count() }
+        fn edge_count(&self) -> usize { self.graph.edge_count() }
+        fn start_node(&self) -> Self::NodeIndex { NodeIndex::new(0) }
+        fn end_node(&self) -> Self::NodeIndex { self.end }
+        fn predecessors(&self, node: Self::NodeIndex) -> Self::PredecessorIterator<'_> {
+            self.graph.neighbors_directed(node, Incoming)
+        }
+        fn successors(&self, node: Self::NodeIndex) -> Self::SuccessorIterator<'_> {
+            self.graph.neighbors_directed(node, Outgoing)
+        }
+        fn in_degree(&self, node: Self::NodeIndex) -> usize {
+            self.graph.neighbors_directed(node, Incoming).count()
+        }
+        fn out_degree(&self, node: Self::NodeIndex) -> usize {
+            self.graph.neighbors_directed(node, Outgoing).count()
+        }
+        fn is_end(&self, node: Self::NodeIndex) -> bool { node == self.end }
+        fn get_symbol_char(&self, node: Self::NodeIndex) -> char { self.graph[node] }
+        fn is_symbol_equal(&self, node: Self::NodeIndex, s: u8) -> bool { self.graph[node] as u8 == s }
+        fn get_node_ordering(&self) -> Vec<usize> {
+            let toposorted = toposort(&self.graph, None).unwrap();
+            let mut node_ordering = vec![0; toposorted.len()];
+            for (rank, node) in toposorted.iter().enumerate() {
+                node_ordering[node.index()] = rank;
+            }
+            node_ordering
+        }
+    }
+
+    #[derive(Default)]
+    struct DummyVisited;
+
+    impl<N: NodeIndexType, O: OffsetType> AstarVisited<N, O> for DummyVisited {
+        fn get_score(&self, _aln_node: &AlignmentGraphNode<N, O>, _state: AlignState) -> Score { Score::Unvisited }
+        fn set_score(&mut self, _aln_node: &AlignmentGraphNode<N, O>, _state: AlignState, _score: Score) {}
+        fn mark_reached(&mut self, _score: Score, _aln_node: &AlignmentGraphNode<N, O>, _state: AlignState) {}
+        fn dfa_match(&mut self, _score: Score, _parent: &AlignmentGraphNode<N, O>, _child: &AlignmentGraphNode<N, O>) {}
+        fn prune(&self, _score: Score, _aln_node: &AlignmentGraphNode<N, O>, _state: AlignState) -> bool { false }
+        fn update_score_if_lower(&mut self, _aln_node: &AlignmentGraphNode<N, O>, _state: AlignState, _parent: &AlignmentGraphNode<N, O>, _parent_state: AlignState, _score: Score) -> bool { true }
+        fn backtrace<G>(&self, _ref_graph: &G, _seq: &[u8], _aln_node: &AlignmentGraphNode<N, O>) -> Alignment<N>
+        where G: AlignableRefGraph<NodeIndex = N> { Vec::new() }
+        fn write_tsv<W>(&self, _writer: &mut W) -> Result<(), PoastaError>
+        where
+            W: Write,
+        {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_extend_refgraph_end() {
+        let graph = CharGraph::linear(&['A', 'B', 'C']);
+        let seq = b"ABC";
+        let start = AlignmentGraphNode::new(graph.start_node(), 0u8);
+        let mut dfa = DepthFirstGreedyAlignment::new(&graph, seq, Score::Score(NonMaxU32::new(0).unwrap()), &start);
+        let mut visited = DummyVisited::default();
+        let res = dfa.extend(&mut visited);
+        assert!(matches!(res, Some(ExtendResult::RefGraphEnd(_, _))));
+        assert_eq!(dfa.get_num_visited(), 3);
+    }
+
+    #[test]
+    fn test_extend_query_end() {
+        let graph = CharGraph::linear(&['A', 'B', 'C']);
+        let seq = b"AB";
+        let start = AlignmentGraphNode::new(graph.start_node(), 0u8);
+        let mut dfa = DepthFirstGreedyAlignment::new(&graph, seq, Score::Score(NonMaxU32::new(0).unwrap()), &start);
+        let mut visited = DummyVisited::default();
+        let res = dfa.extend(&mut visited);
+        assert!(matches!(res, Some(ExtendResult::QueryEnd(_, _))));
+    }
+
+    #[test]
+    fn test_extend_mismatch() {
+        let graph = CharGraph::linear(&['A', 'B', 'C']);
+        let seq = b"ABD";
+        let start = AlignmentGraphNode::new(graph.start_node(), 0u8);
+        let mut dfa = DepthFirstGreedyAlignment::new(&graph, seq, Score::Score(NonMaxU32::new(0).unwrap()), &start);
+        let mut visited = DummyVisited::default();
+        let res = dfa.extend(&mut visited);
+        assert!(matches!(res, Some(ExtendResult::Mismatch(_, _))));
+    }
+}
+
