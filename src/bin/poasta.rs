@@ -22,7 +22,9 @@ use poasta::errors::PoastaError;
 use poasta::graphs::poa::{POAGraph, POAGraphWithIx};
 use poasta::graphs::AlignableRefGraph;
 use poasta::io::fasta::poa_graph_to_fasta;
-use poasta::io::graph::{graph_to_dot, graph_to_gfa, load_graph_from_fasta_msa};
+use poasta::io::graph::{
+    graph_to_dot, graph_to_gfa, load_graph_from_fasta_msa, load_graph_from_gfa,
+};
 use poasta::io::load_graph;
 
 trait Output: Write + IsTerminal {}
@@ -518,12 +520,15 @@ fn view_subcommand(view_args: &ViewArgs) -> Result<()> {
 
 fn stats_subcommand(stats_args: &StatsArgs) -> Result<()> {
     let fasta_extensions = vec![".fa", ".fa.gz", ".fna", ".fna.gz", ".fasta", ".fasta.gz"];
+    let gfa_extensions = vec![".gfa", ".gfa.gz"];
     let path_as_str = stats_args.graph.to_string_lossy();
     let graph = if fasta_extensions
-        .into_iter()
+        .iter()
         .any(|ext| path_as_str.ends_with(ext))
     {
         load_graph_from_fasta_msa(&stats_args.graph)?
+    } else if gfa_extensions.iter().any(|ext| path_as_str.ends_with(ext)) {
+        load_graph_from_gfa::<u32>(&stats_args.graph)?.graph
     } else {
         let file_in = File::open(&stats_args.graph)?;
         load_graph(&file_in)?
