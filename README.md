@@ -10,6 +10,13 @@ POASTA is a fast and optimal partial order aligner that supports gap-affine alig
 a recent [algorithm for pairwise alignment](https://github.com/smarco/WFA2-lib), it can exploit exact matches
 between the query and the graph, greatly speeding up the alignment process.
 
+## ELI5
+
+Think of POASTA as a very fast helper that lines up DNA sequences so we can
+easily see where they match and where they differ. It spots obvious matches
+first, which makes the whole process much quicker, especially when many
+sequences are involved.
+
 ## Installation
 
 ### Pre-built binaries
