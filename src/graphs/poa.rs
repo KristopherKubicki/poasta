@@ -498,3 +498,35 @@ impl Display for POAGraphWithIx {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::errors::PoastaError;
+
+    #[test]
+    fn add_alignment_wrong_weights_length() {
+        let mut graph = POAGraph::<u16>::new();
+        let seq = b"ACGT";
+        // Intentionally use a weights vector shorter than the sequence
+        let weights = vec![1, 2, 3];
+
+        let err = graph
+            .add_alignment_with_weights("seq1", seq, None, &weights)
+            .unwrap_err();
+        let msg = format!("{}", err);
+
+        match err {
+            PoastaError::WeightsUnequalSize(seq_len, weights_len) => {
+                assert_eq!(seq_len, seq.len());
+                assert_eq!(weights_len, weights.len());
+
+                let expected = format!(
+                    "The length of the weights vector ({weights_len}) does not match the length of the sequence ({seq_len})!"
+                );
+                assert_eq!(msg, expected);
+            }
+            other => panic!("Unexpected error: {other:?}"),
+        }
+    }
+}
